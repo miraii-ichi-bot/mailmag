@@ -642,6 +642,52 @@ textarea{resize:vertical;line-height:1.7}
 ══════════════════════════════════════════ -->
 <div id="tab-schedule" class="section" style="display:none"></div>
 
+
+<!-- TAB: 文章作成AI -->
+<div id="tab-writer" class="section">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,var(--pink-light),var(--purple-light))">✍️</div>
+      <div><div class="card-title">文章作成AI</div><div class="card-sub">APIキーを設定タブで入力してご利用ください</div></div>
+    </div>
+    <div style="text-align:center;padding:2rem;color:var(--gray400)">
+      <div style="font-size:40px;margin-bottom:12px">✍️</div>
+      <div style="font-size:14px;font-weight:600;color:var(--gray600)">この機能を使うにはAPIキーが必要です</div>
+      <div style="font-size:13px;margin-top:8px">右上の「APIキー」欄に <code>sk-ant-...</code> を入力してください</div>
+      <button class="btn btn-primary" style="margin-top:16px" onclick="goTab('settings')">⚙️ 設定へ →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: 設定 -->
+<div id="tab-settings" class="section">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,#f0f9ff,#e8f5e9)">🚀</div>
+      <div><div class="card-title">GitHub Pages 自動更新</div><div class="card-sub">ボタン1つで公開URLに反映</div></div>
+    </div>
+    <label class="lbl" style="margin-top:0">GitHub Personal Access Token</label>
+    <div style="display:flex;gap:8px">
+      <input type="password" id="gh-token" placeholder="ghp_..." style="flex:1;font-size:13px;font-family:monospace" oninput="saveGhToken()">
+    </div>
+    <p style="font-size:12px;color:var(--gray400);margin-top:6px">💡 一度入力すると次回から自動入力されます</p>
+    <div style="margin-top:1rem">
+      <button class="btn btn-primary" id="gh-update-btn" onclick="updateGitHub()" style="width:100%;justify-content:center;padding:12px">🚀 GitHubに反映する</button>
+    </div>
+    <div id="gh-status" style="display:none;margin-top:10px;font-size:13px;padding:10px;border-radius:var(--r-sm)"></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:var(--green-light)">🌐</div>
+      <div><div class="card-title">公開URL</div></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" value="https://miraii-ichi-bot.github.io/mailmag/" readonly style="flex:1;font-size:13px;background:var(--gray50)">
+      <button class="btn btn-sm btn-primary" onclick="navigator.clipboard.writeText('https://miraii-ichi-bot.github.io/mailmag/').then(()=>alert('✅ コピーしました！'))">📋 コピー</button>
+      <a href="https://miraii-ichi-bot.github.io/mailmag/" target="_blank" class="btn btn-sm">開く →</a>
+    </div>
+  </div>
+</div>
 <!-- ══════════════════════════════════════════
      TAB: 送信前チェック（非表示・最終確認モーダルに移動）
 ══════════════════════════════════════════ -->
