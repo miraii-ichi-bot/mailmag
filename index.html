@@ -971,6 +971,46 @@ textarea{resize:vertical;line-height:1.7}
     <p style="font-size:12px;color:var(--gray400);margin-top:6px">このURLを社内のSlackやメールで共有してください</p>
   </div>
 
+
+  <!-- スプレッドシート共有設定 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,#e8f5e9,#f0fdf4)">🔗</div>
+      <div>
+        <div class="card-title">チーム共有設定（Googleスプレッドシート連携）</div>
+        <div class="card-sub">設定するとチーム全員で配信データを共有できます</div>
+      </div>
+    </div>
+    <label class="lbl">GAS Web App URL</label>
+    <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/xxxxx/exec">
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-primary" onclick="saveGasUrl()">🔗 URLを保存して連携する</button>
+      <button class="btn" onclick="testGasUrl()">🧪 接続テスト</button>
+    </div>
+    <div id="gas-msg" style="font-size:12px;margin-top:8px;display:none"></div>
+    <p style="font-size:12px;color:var(--gray400);margin-top:8px">⚠️ URLの取得方法は設定手順を参照してください</p>
+  </div>
+
+  <!-- データバックアップ -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:linear-gradient(135deg,var(--green-light),var(--teal-light))">💾</div>
+      <div>
+        <div class="card-title">データバックアップ＆復元</div>
+        <div class="card-sub">配信データをJSONファイルに保存・読み込みできます</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-success" onclick="exportData()">📥 データをエクスポート（JSON）</button>
+      <label class="btn" style="cursor:pointer">
+        📤 データをインポート（JSON）
+        <input type="file" accept=".json" style="display:none" onchange="importData(this)">
+      </label>
+    </div>
+    <div id="backup-msg" style="font-size:12px;color:var(--green);display:none"></div>
+    <p style="font-size:12px;color:var(--gray400);margin-top:6px">⚠️ 定期的にエクスポートして保存しておくことをおすすめします</p>
+  </div>
+
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -1089,6 +1129,10 @@ function switchTab(name, el) {
 }
 
 function goTab(name) {
+  if (name === 'settings') {
+    const gasInput = document.getElementById('gas-url');
+    if (gasInput) gasInput.value = getGasUrl();
+  }
   const tabs = document.querySelectorAll('.nav-tab');
   const tabMap = { home:0, manager:1, calendar:2, csv:3, writer:4, check:5, settings:6 };
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -1304,6 +1348,8 @@ ${links}
 // STORAGE — localStorage（GitHub Pages・ローカルファイル対応）
 // ═══════════════════════════════════════════════════════
 const KEY = 'mailmag_deliveries';
+const GAS_URL_KEY = 'mailmag_gas_url'; // GASのURL（設定タブで入力）
+function getGasUrl() { return localStorage.getItem(GAS_URL_KEY) || ''; }
 const NOTIF_KEY = 'mailmag_notifs';
 let _cache = null;
 let _notifCache = null;
@@ -1311,6 +1357,23 @@ let _notifCache = null;
 function initStorage() {
   try { _cache = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { _cache = []; }
   try { _notifCache = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); } catch { _notifCache = []; }
+  // GAS連携：起動時にスプレッドシートからデータを読み込む
+  const _gasUrl = getGasUrl();
+  if (_gasUrl) {
+    fetch(_gasUrl + '?action=load')
+      .then(r => r.json())
+      .then(data => {
+        if (data.deliveries) {
+          _cache = data.deliveries;
+          localStorage.setItem(KEY, JSON.stringify(_cache));
+        }
+        if (data.notifs) {
+          _notifCache = data.notifs;
+          localStorage.setItem(NOTIF_KEY, JSON.stringify(_notifCache));
+        }
+        renderAll();
+      }).catch(() => {}); // GASエラー時はlocalStorageのデータを使う
+  }
 }
 
 function loadFromLocal(key) {
@@ -1321,7 +1384,15 @@ function load() { return _cache || []; }
 
 async function save(d) {
   _cache = d;
-  try { localStorage.setItem(KEY, JSON.stringify(d)); } catch(e) { console.error('save error', e); }
+  try {
+    localStorage.setItem(KEY, JSON.stringify(d));
+    // GAS連携：スプレッドシートにも保存
+    const _gasUrl2 = getGasUrl();
+    if (_gasUrl2) {
+      fetch(_gasUrl2, {method:'POST', body: JSON.stringify({action:'save', deliveries: d, notifs: _notifCache})})
+        .catch(() => {});
+    }
+  } catch(e) { console.error('save error', e); }
 }
 
 function loadNotifs() { return _notifCache || []; }
@@ -2642,6 +2713,82 @@ async function updateGitHub() {
   }
   btn.disabled = false;
   btn.innerHTML = '⬆️ GitHubを更新';
+}
+
+
+// ═══════════════════════════════════════════════════════
+// GAS連携
+// ═══════════════════════════════════════════════════════
+function saveGasUrl() {
+  const url = document.getElementById('gas-url').value.trim();
+  const msg = document.getElementById('gas-msg');
+  if (!url) { showGasMsg('❌ URLを入力してください', 'var(--red)'); return; }
+  localStorage.setItem(GAS_URL_KEY, url);
+  showGasMsg('✅ 保存しました！ページを再読み込みして連携を開始します', 'var(--green)');
+  setTimeout(() => location.reload(), 1500);
+}
+
+async function testGasUrl() {
+  const url = document.getElementById('gas-url').value.trim() || getGasUrl();
+  if (!url) { showGasMsg('❌ URLを入力してください', 'var(--red)'); return; }
+  showGasMsg('🔄 接続テスト中...', 'var(--gray500)');
+  try {
+    const r = await fetch(url + '?action=ping');
+    const d = await r.json();
+    if (d.status === 'ok') {
+      showGasMsg('✅ 接続成功！スプレッドシートと連携できています', 'var(--green)');
+    } else {
+      showGasMsg('⚠️ 接続できましたが応答が不正です: ' + JSON.stringify(d), 'var(--orange)');
+    }
+  } catch(e) {
+    showGasMsg('❌ 接続失敗: ' + e.message, 'var(--red)');
+  }
+}
+
+function showGasMsg(text, color) {
+  const msg = document.getElementById('gas-msg');
+  if (!msg) return;
+  msg.textContent = text;
+  msg.style.color = color;
+  msg.style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════════
+// BACKUP / RESTORE
+// ═══════════════════════════════════════════════════════
+function exportData() {
+  const deliveries = JSON.parse(localStorage.getItem(KEY) || '[]');
+  const notifs = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+  const blob = new Blob([JSON.stringify({deliveries, notifs, exportedAt: new Date().toISOString()}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `mailmag_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  const msg = document.getElementById('backup-msg');
+  if (msg) { msg.textContent = `✅ ${deliveries.length}件のデータをエクスポートしました`; msg.style.display='block'; setTimeout(()=>msg.style.display='none', 3000); }
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.deliveries) {
+        localStorage.setItem(KEY, JSON.stringify(data.deliveries));
+      }
+      if (data.notifs) {
+        localStorage.setItem(NOTIF_KEY, JSON.stringify(data.notifs));
+      }
+      const msg = document.getElementById('backup-msg');
+      if (msg) { msg.textContent = `✅ ${(data.deliveries||[]).length}件のデータをインポートしました。ページを更新してください。`; msg.style.display='block'; }
+      setTimeout(() => location.reload(), 1500);
+    } catch(err) {
+      alert('❌ ファイルの読み込みに失敗しました: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
 }
 
 // ═══════════════════════════════════════════════════════
