@@ -1349,7 +1349,8 @@ ${links}
 // ═══════════════════════════════════════════════════════
 const KEY = 'mailmag_deliveries';
 const GAS_URL_KEY = 'mailmag_gas_url'; // GASのURL（設定タブで入力）
-function getGasUrl() { return localStorage.getItem(GAS_URL_KEY) || ''; }
+const GAS_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbzcJYTqG9BjcLU8SBry_lhH4giuV38DraicHmIaFJyMEKQuT4beMS056gDRXuf7ngI6/exec';
+function getGasUrl() { return localStorage.getItem(GAS_URL_KEY) || GAS_URL_DEFAULT; }
 const NOTIF_KEY = 'mailmag_notifs';
 let _cache = null;
 let _notifCache = null;
